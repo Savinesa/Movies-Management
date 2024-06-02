@@ -112,47 +112,59 @@ namespace MoviesAPI.Controllers
             }
 
             var validRecords = records.AsParallel().Where(IsValidRecord).ToList();
-            foreach (var record in records)
-            {
-                if (IsValidRecord(record))
-                {
-                    validRecords.Add(record);
-                }
-            }
+            //foreach (var record in records)
+            //{
+            //    if (IsValidRecord(record))
+            //    {
+            //        validRecords.Add(record);
+            //    }
+            //}
 
             if (!validRecords.Any())
             {
                 return BadRequest("No valid records found.");
             }
 
-            foreach (var csvRecord in records)
+            using (var transaction = _context.Database.BeginTransaction())
             {
-                var movie = new Movie
+                try
                 {
-                    Name = csvRecord.Name,
-                    Description = csvRecord.Description,
-                    Year = csvRecord.Year,
-                    Runtime = csvRecord.Runtime,
-                    Rating = csvRecord.Rating,
-                    Votes = csvRecord.Votes,
-                    Revenue = csvRecord.Revenue,
-                    Metascore = csvRecord.Metascore,
-                    DirectorId = ResolveDirectorId(csvRecord.Director),
-                    GenreId = ResolveGenreId(csvRecord.Genre),
-                    MovieActors = ResolveActors(csvRecord.Actors)
-                };
+                    foreach (var csvRecord in records)
+                    {
+                        var movie = new Movie
+                        {
+                            Name = csvRecord.Name,
+                            Description = csvRecord.Description,
+                            Year = csvRecord.Year,
+                            Runtime = csvRecord.Runtime,
+                            Rating = csvRecord.Rating,
+                            Votes = csvRecord.Votes,
+                            Revenue = csvRecord.Revenue,
+                            Metascore = csvRecord.Metascore,
+                            DirectorId = ResolveDirectorId(csvRecord.Director),
+                            GenreId = ResolveGenreId(csvRecord.Genre),
+                            MovieActors = ResolveActors(csvRecord.Actors)
+                        };
 
-                _context.movies.Add(movie);
+                        _context.movies.Add(movie);
+                    }
+                    await _context.SaveChangesAsync();
+                    transaction.Commit();
+                }
+                catch (Exception)
+                {
+                    transaction.Rollback();
+                    throw;
+                }
+
+
+                return Ok(new { Count = validRecords.Count });
             }
-            await _context.SaveChangesAsync();
-
-
-            return Ok(new { Count = validRecords.Count });
         }
-        #endregion
+            #endregion
 
-        #region Delete
-        [HttpDelete("DeleteAll")]
+            #region Delete
+            [HttpDelete("DeleteAll")]
         public async Task<IActionResult> DeleteAll()
         {
             var allMovies = await _context.movies.Include(m => m.MovieActors).ToListAsync();
