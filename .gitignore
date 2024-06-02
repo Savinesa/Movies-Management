@@ -1,0 +1,9 @@
+# Ignore directories
+[Bb]in/
+[Oo]bj/
+.vs/
+
+# Ignore file types
+*.user
+*.suo
+*.userprefs
