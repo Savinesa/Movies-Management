@@ -110,6 +110,7 @@ namespace MoviesAPI.Controllers
                 if (file == null || file.Length == 0)
                     return BadRequest("No file uploaded.");
 
+<<<<<<< HEAD
                 var path = Path.GetTempFileName();
 
                 using (var stream = new FileStream(path, FileMode.Create))
@@ -190,9 +191,62 @@ namespace MoviesAPI.Controllers
 
        
         #endregion
+=======
+            var validRecords = records.AsParallel().Where(IsValidRecord).ToList();
+            //foreach (var record in records)
+            //{
+            //    if (IsValidRecord(record))
+            //    {
+            //        validRecords.Add(record);
+            //    }
+            //}
 
-        #region Delete
-        [HttpDelete("DeleteAll")]
+            if (!validRecords.Any())
+            {
+                return BadRequest("No valid records found.");
+            }
+
+            using (var transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    foreach (var csvRecord in records)
+                    {
+                        var movie = new Movie
+                        {
+                            Name = csvRecord.Name,
+                            Description = csvRecord.Description,
+                            Year = csvRecord.Year,
+                            Runtime = csvRecord.Runtime,
+                            Rating = csvRecord.Rating,
+                            Votes = csvRecord.Votes,
+                            Revenue = csvRecord.Revenue,
+                            Metascore = csvRecord.Metascore,
+                            DirectorId = ResolveDirectorId(csvRecord.Director),
+                            GenreId = ResolveGenreId(csvRecord.Genre),
+                            MovieActors = ResolveActors(csvRecord.Actors)
+                        };
+
+                        _context.movies.Add(movie);
+                    }
+                    await _context.SaveChangesAsync();
+                    transaction.Commit();
+                }
+                catch (Exception)
+                {
+                    transaction.Rollback();
+                    throw;
+                }
+
+
+                return Ok(new { Count = validRecords.Count });
+            }
+        }
+            #endregion
+>>>>>>> 013e57606df2a390dd0398d1d7eac712469ad84e
+
+            #region Delete
+            [HttpDelete("DeleteAll")]
         public async Task<IActionResult> DeleteAll()
         {
             try
